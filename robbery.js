@@ -4,68 +4,127 @@
  * Сделано задание на звездочку
  * Реализовано оба метода и tryLater
  */
-const isStar = false;
+const isStar = true;
 
+const startTime = new Date(Date.UTC(2021, 1, 1));
+const endTime = new Date(Date.UTC(2021, 1, 3, 23, 59, 59, 999));
+const dayNumber = ['ВС', 'ПН', 'ВТ', 'СР'];
+
+/**
+ * @class schedule
+ * @private
+ * @type {Object}
+ * @property {Array} Danny - расписание Danny
+ * @property {Array} Rusty - расписание Rusty
+ * @property {Array} Linus - расписание Linus
+ */
+/**
+ * Считываем расписание занятости участников банды и добаляем в единое рассписание
+ * @param {schedule} schedule - расписание участников банды *
+ * @returns {Array} - единое расписание занятости
+ */
 function parseSchedule(schedule) {
     let timeToWork = [];
     for (let member in schedule) {
-        for (let hours of schedule[member]) {
-            parseHours(hours, timeToWork);
+        if (schedule[member] !== undefined) {
+            parseHours(schedule[member], timeToWork);
         }
     }
+
     return timeToWork;
 }
 
-function parseHours(workingHours, timeToWork) {
-    timeToWork.push({
-        from: toUTC(workingHours.from),
-        to: toUTC(workingHours.to)
-    })    
+/**
+ * Считываем компоненту рассписания
+ * @param {Array} scheduleMember - расписание участника банды
+ * @param {Array} timeToWork - единое расписание занятости
+ */
+function parseHours(scheduleMember, timeToWork) {
+    for (let workingHours of scheduleMember) {
+        timeToWork.push({
+            from: toUTC(workingHours.from),
+            to: toUTC(workingHours.to)
+        });
+    }
 }
 
+/**
+ * Считываем время и запоминаем его в UTC
+ * @param {string} hours - время
+ * @returns {number} - количество миллисикунд прошедших с 1 января 1970 года до hours по UTC
+ */
 function toUTC(hours) {
-    let year = '2021';
-    let month = '02';
-    let dayNumber = {'ПН': '01', 'ВТ': '02', 'СР': '03'};
-    
     let dayAndHours = hours.split(' ');
     let hoursAndZone = dayAndHours[1].split('+');
-    let day = dayNumber[dayAndHours[0]];
-    let hour = `${hoursAndZone[0]}:00.000`;
-    let zone = `+0${hoursAndZone[1]}:00`;
-    return Date.parse(`${year}-${month}-${day}T${hour}${zone}`);
+    let hoursAndMinutes = hoursAndZone[0].split(':');
+
+    let day = dayNumber.indexOf(dayAndHours[0]);
+    let hour = parseInt(hoursAndMinutes[0]);
+    let minutes = parseInt(hoursAndMinutes[1]);
+    let zone = parseInt(hoursAndZone[1]);
+
+    return Date.UTC(startTime.getFullYear(), startTime.getMonth(), day, hour, minutes) -
+        minToMS(zone * 60);
 }
 
+/**
+ * @class workingHours
+ * @private
+ * @type {Object}
+ * @property from - время открытия
+ * @property to - время звкрытия
+ */
+/**
+ * Считываем время работы банка
+ * @param {workingHours} workingHours - время работы банка
+ * @returns {{time: Array, zone: number}} - time - время работы с ПН по СР,
+ * zone - часовой пояс в котором находится банк
+ */
 function parseBankHours(workingHours) {
     let zone = workingHours.from.split('+')[1];
     let timeToWork = [];
-    for (let day of ['ПН', 'ВТ', 'СР']) {
+    for (let day of dayNumber.slice(1)) {
         timeToWork.push({
-        from: toUTC(day+' '+workingHours.from),
-        to: toUTC(day+' '+workingHours.to)
+            from: toUTC(day + ' ' + workingHours.from),
+            to: toUTC(day + ' ' + workingHours.to)
         });
     }
-    return {time: timeToWork,
-        zone: `+0${zone}:00`}
+
+    return { time: timeToWork,
+        zone: parseInt(zone) };
 }
 
-function getTimeToFun(startTime, endTime, timeToWork) {
+/**
+ * На отрезке времени от start до end берет дополнение к отрезкам из timeToWork
+ * @param {number} start
+ * @param {number} end
+ * @param {Array} timeToWork - занятое время
+ * @returns {Array} - свободное время
+ */
+function getTimeToFun(start, end, timeToWork) {
     let timeToFun = [];
     for (let time of timeToWork) {
         timeToFun.push({
-            from: startTime,
+            from: start,
             to: time.from
         });
-        startTime = time.to;
+        start = time.to;
     }
     timeToFun.push({
-            from: startTime,
-            to: endTime
-        });
+        from: start,
+        to: end
+    });
+
     return timeToFun;
 }
 
-function calculateTimeToFun(startTime, endTime, schedule) {
+/**
+ * Переводит множество пересекающихся отрезков времени из schedule
+ * в множество непересекающися отрезков
+ * @param {Array} schedule - расписание с пересечениями по времени
+ * @returns {Array} - расписание на основе исходного без пересечений по времени
+ */
+function calculateTimeToWork(schedule) {
     let timeToWork = [];
     schedule.sort((a, b) => {
         if (a.from > b.from) {
@@ -74,18 +133,18 @@ function calculateTimeToFun(startTime, endTime, schedule) {
         if (a.from < b.from) {
             return -1;
         }
+
         return 0;
     });
     let index = 0;
     timeToWork.push({
         from: schedule[index].from,
         to: schedule[index].to
-        });
+    });
     for (let time of schedule) {
-        if(time.from <= timeToWork[index].to && timeToWork[index].to <= time.to) {
+        if (time.from <= timeToWork[index].to && timeToWork[index].to <= time.to) {
             timeToWork[index].to = time.to;
-        }
-        else if (timeToWork[index].to < time.from){
+        } else if (timeToWork[index].to < time.from) {
             index += 1;
             timeToWork.push({
                 from: time.from,
@@ -93,13 +152,23 @@ function calculateTimeToFun(startTime, endTime, schedule) {
             });
         }
     }
-    return getTimeToFun(startTime, endTime, timeToWork);
+
+    return timeToWork;
 }
 
 /**
- * @param {Object} schedule – Расписание Банды
+ * Переводит минуты в миллисекунды
+ * @param {number} min
+ * @returns {number}
+ */
+function minToMS(min) {
+    return min * 60 * 1000;
+}
+
+/**
+ * @param {schedule} schedule – Расписание Банды
  * @param {Number} duration - Время на ограбление в минутах
- * @param {Object} workingHours – Время работы банка
+ * @param {workingHours} workingHours – Время работы банка
  * @param {String} workingHours.from – Время открытия, например, "10:00+5"
  * @param {String} workingHours.to – Время закрытия, например, "18:00+5"
  * @returns {Object}
@@ -109,18 +178,22 @@ function getAppropriateMoment(schedule, duration, workingHours) {
 
     let timeToWork = parseSchedule(schedule);
     let bankTimeWork = parseBankHours(workingHours);
-    let start = Date.parse('2021-02-01T00:00:00.000'+bankTimeWork.zone);
-    let end = Date.parse('2021-02-03T23:59:59.999'+bankTimeWork.zone);
+
+    let start = startTime.getTime() + minToMS(bankTimeWork.zone * 60);
+    let end = endTime.getTime() + minToMS(bankTimeWork.zone * 60);
+
     let bankTimeClose = getTimeToFun(start, end, bankTimeWork.time);
-    let timeToFun = calculateTimeToFun(start, end, timeToWork.concat(bankTimeClose));
-    
-    let timeToDo = duration * 60 * 1000;
+    let timeToFun = getTimeToFun(start, end, calculateTimeToWork(timeToWork.concat(bankTimeClose)));
+
     let go = [];
     for (let time of timeToFun) {
-        if(time.to - time.from >= timeToDo){
+        if (time.to - time.from >= minToMS(duration)) {
             go.push(time);
         }
     }
+    let index = 0;
+    let shift = 0;
+
     return {
 
         /**
@@ -128,10 +201,7 @@ function getAppropriateMoment(schedule, duration, workingHours) {
          * @returns {Boolean}
          */
         exists: function () {
-            if (go.length != 0) {
-                return true;
-            }
-            return false;
+            return go.length !== 0;
         },
 
         /**
@@ -142,12 +212,17 @@ function getAppropriateMoment(schedule, duration, workingHours) {
          */
         format: function (template) {
             if (!this.exists()) {
-                return '""';
+                return '';
             }
-            let time = new Date(go[0].from);
-            let result = template.replace('%DD', ['ВС', 'ПН', 'ВТ', 'СР',][time.getDay()]);
-            result = result.replace('%HH', time.getHours());
-            result = result.replace('%MM', time.getMinutes());
+            let time = new Date(go[index].from + minToMS(shift * 30));
+            let hours = time.getUTCHours() + bankTimeWork.zone;
+            let minutes = time.getUTCMinutes();
+            let result = template.replace('%DD', dayNumber[time.getUTCDay()]);
+            result = result.replace('%HH',
+                ((hours - hours % 10) / 10).toString() + (hours % 10).toString());
+            result = result.replace('%MM',
+                ((minutes - minutes % 10) / 10).toString() + (minutes % 10).toString());
+
             return result;
         },
 
@@ -157,7 +232,20 @@ function getAppropriateMoment(schedule, duration, workingHours) {
          * @returns {Boolean}
          */
         tryLater: function () {
-            return false;
+            if (go[index].to - go[index].from >= minToMS(duration) + minToMS((shift + 1) * 30)) {
+                shift += 1;
+
+                return true;
+            }
+            index += 1;
+            if (index === go.length) {
+                index -= 1;
+
+                return false;
+            }
+            shift = -1;
+
+            return this.tryLater();
         }
     };
 }
