@@ -28,6 +28,35 @@ describe('robbery.getAppropriateMoment()', () => {
         );
     }
 
+    function getMomentForNewBankSchedule(time) {
+        return robbery.getAppropriateMoment(
+            {
+                Danny: [
+                    { from: 'ПН 02:00+5', to: 'ВТ 17:00+5' }
+                ],
+                Rusty: [
+                    { from: 'ВТ 13:00+5', to: 'ВТ 23:58+5' }
+                ],
+                Linus: [
+                    { from: 'ПН 09:00+3', to: 'ПН 14:00+3' },
+                    { from: 'ПН 21:00+3', to: 'ВТ 09:30+3' }
+                ]
+            },
+            time,
+            { from: '00:00+5', to: '23:59+5' }
+        );
+    }
+
+    it('должен успевать совершать ограбление', () => {
+        const moment = getMomentForNewBankSchedule(90);
+
+        assert.ok(moment.exists());
+        assert.strictEqual(
+            moment.format('Метим на %DD, старт в %HH:%MM!'),
+            'Метим на ПН, старт в 00:00!'
+        );
+    });
+
     it('должен форматировать существующий момент', () => {
         const moment = getMomentFor(90);
 

@@ -225,8 +225,9 @@ function getAppropriateMoment(schedule, duration, workingHours) {
             }
             let time = new Date(go[index].from + minToMS(shift * 30));
             let hours = (time.getUTCHours() + bankTimeWork.zone) % 24;
+            let shiftDay = (time.getUTCHours() + bankTimeWork.zone - hours) / 24;
             let minutes = time.getUTCMinutes();
-            let result = template.replace('%DD', dayNumber[time.getDay()]);
+            let result = template.replace('%DD', dayNumber[time.getUTCDay() + shiftDay]);
             result = result.replace('%HH',
                 ((hours - hours % 10) / 10).toString() + (hours % 10).toString());
             result = result.replace('%MM',
