@@ -179,8 +179,8 @@ function getAppropriateMoment(schedule, duration, workingHours) {
     let timeToWork = parseSchedule(schedule);
     let bankTimeWork = parseBankHours(workingHours);
 
-    let start = startTime.getTime() + minToMS(bankTimeWork.zone * 60);
-    let end = endTime.getTime() + minToMS(bankTimeWork.zone * 60);
+    let start = startTime.getTime();
+    let end = endTime.getTime();
 
     let bankTimeClose = getTimeToFun(start, end, bankTimeWork.time);
     let timeToFun = getTimeToFun(start, end, calculateTimeToWork(timeToWork.concat(bankTimeClose)));
