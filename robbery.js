@@ -103,17 +103,26 @@ function parseBankHours(workingHours) {
  */
 function getTimeToFun(start, end, timeToWork) {
     let timeToFun = [];
+    let startSegment = start;
+    let endSegment;
     for (let time of timeToWork) {
+        endSegment = time.from;
+        if (startSegment === endSegment) {
+            startSegment = time.to;
+            continue;
+        }
         timeToFun.push({
-            from: start,
-            to: time.from
+            from: startSegment,
+            to: endSegment
         });
-        start = time.to;
+        startSegment = time.to;
     }
-    timeToFun.push({
-        from: start,
-        to: end
-    });
+    if (startSegment !== end) {
+        timeToFun.push({
+            from: startSegment,
+            to: end
+        });
+    }
 
     return timeToFun;
 }
@@ -179,8 +188,8 @@ function getAppropriateMoment(schedule, duration, workingHours) {
     let timeToWork = parseSchedule(schedule);
     let bankTimeWork = parseBankHours(workingHours);
 
-    let start = startTime.getTime();
-    let end = endTime.getTime();
+    let start = startTime.getTime() - minToMS(bankTimeWork.zone * 60);
+    let end = endTime.getTime() - minToMS(bankTimeWork.zone * 60);
 
     let bankTimeClose = getTimeToFun(start, end, bankTimeWork.time);
     let timeToFun = getTimeToFun(start, end, calculateTimeToWork(timeToWork.concat(bankTimeClose)));
@@ -215,9 +224,9 @@ function getAppropriateMoment(schedule, duration, workingHours) {
                 return '';
             }
             let time = new Date(go[index].from + minToMS(shift * 30));
-            let hours = time.getUTCHours() + bankTimeWork.zone;
+            let hours = (time.getUTCHours() + bankTimeWork.zone) % 24;
             let minutes = time.getUTCMinutes();
-            let result = template.replace('%DD', dayNumber[time.getUTCDay()]);
+            let result = template.replace('%DD', dayNumber[time.getDay()]);
             result = result.replace('%HH',
                 ((hours - hours % 10) / 10).toString() + (hours % 10).toString());
             result = result.replace('%MM',

@@ -38,6 +38,16 @@ describe('robbery.getAppropriateMoment()', () => {
         );
     });
 
+    it('должен укладываться в свободный отрезок времени', () => {
+        const moment = getMomentFor(60);
+
+        assert.ok(moment.exists());
+        assert.strictEqual(
+            moment.format('Метим на %DD, старт в %HH:%MM!'),
+            'Метим на ПН, старт в 10:00!'
+        );
+    });
+
     it('должен вернуть пустую строку при форматировании несуществующего момента', () => {
         const moment = getMomentFor(121);
 
@@ -68,6 +78,9 @@ describe('robbery.getAppropriateMoment()', () => {
             assert.ok(moment.tryLater());
             assert.ok(moment.tryLater());
             assert.ok(moment.tryLater());
+
+            assert.ok(!moment.tryLater());
+            assert.strictEqual(moment.format('%DD %HH:%MM'), 'СР 10:00');
 
             assert.ok(!moment.tryLater());
             assert.strictEqual(moment.format('%DD %HH:%MM'), 'СР 10:00');
