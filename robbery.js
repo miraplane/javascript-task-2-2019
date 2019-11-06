@@ -232,6 +232,9 @@ function getAppropriateMoment(schedule, duration, workingHours) {
          * @returns {Boolean}
          */
         tryLater: function () {
+            if (go.length === 0) {
+                return false;
+            }
             if (go[index].to - go[index].from >= minToMS(duration) + minToMS((shift + 1) * 30)) {
                 shift += 1;
 
