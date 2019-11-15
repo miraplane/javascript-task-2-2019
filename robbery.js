@@ -6,6 +6,9 @@
  */
 const isStar = true;
 
+const hoursInDay = 24;
+const timeLater = 30;
+
 const startTime = new Date(Date.UTC(2021, 1, 1));
 const endTime = new Date(Date.UTC(2021, 1, 3, 23, 59, 59, 999));
 const dayNumber = ['ВС', 'ПН', 'ВТ', 'СР'];
@@ -19,15 +22,15 @@ const dayNumber = ['ВС', 'ПН', 'ВТ', 'СР'];
  * @property {Array} Linus - расписание Linus
  */
 /**
- * Считываем расписание занятости участников банды и добаляем в единое рассписание
+ * Считываем расписание занятости участников банды и добаляем в единое расписание
  * @param {schedule} schedule - расписание участников банды *
  * @returns {Array} - единое расписание занятости
  */
 function parseSchedule(schedule) {
     let timeToWork = [];
     for (let member in schedule) {
-        if (schedule[member] !== undefined) {
-            parseHours(schedule[member], timeToWork);
+        if (schedule.hasOwnProperty(member)) {
+            timeToWork = timeToWork.concat(parseHours(schedule[member]));
         }
     }
 
@@ -35,23 +38,26 @@ function parseSchedule(schedule) {
 }
 
 /**
- * Считываем компоненту рассписания
+ * Считываем компоненту расписания
  * @param {Array} scheduleMember - расписание участника банды
- * @param {Array} timeToWork - единое расписание занятости
+ * @returns {Array} - расписание участника банды в UTC
  */
-function parseHours(scheduleMember, timeToWork) {
+function parseHours(scheduleMember) {
+    let timeToWork = [];
     for (let workingHours of scheduleMember) {
         timeToWork.push({
             from: toUTC(workingHours.from),
             to: toUTC(workingHours.to)
         });
     }
+
+    return timeToWork;
 }
 
 /**
  * Считываем время и запоминаем его в UTC
  * @param {string} hours - время
- * @returns {number} - количество миллисикунд прошедших с 1 января 1970 года до hours по UTC
+ * @returns {number} - количество миллисекунд прошедших с 1 января 1970 года до hours по UTC
  */
 function toUTC(hours) {
     let dayAndHours = hours.split(' ');
@@ -151,9 +157,10 @@ function calculateTimeToWork(schedule) {
         to: schedule[index].to
     });
     for (let time of schedule) {
-        if (time.from <= timeToWork[index].to && timeToWork[index].to <= time.to) {
-            timeToWork[index].to = time.to;
-        } else if (timeToWork[index].to < time.from) {
+        let currentTime = timeToWork[index];
+        if (time.from <= currentTime.to && currentTime.to <= time.to) {
+            currentTime.to = time.to;
+        } else if (currentTime.to < time.from) {
             index += 1;
             timeToWork.push({
                 from: time.from,
@@ -172,6 +179,15 @@ function calculateTimeToWork(schedule) {
  */
 function minToMS(min) {
     return min * 60 * 1000;
+}
+
+/**
+ * Возвращает время в формате TT
+ * @param {int} time - время
+ * @returns {string} - строка в формате TT
+ */
+function formatTime(time) {
+    return ((time - time % 10) / 10).toString() + (time % 10).toString();
 }
 
 /**
@@ -223,17 +239,15 @@ function getAppropriateMoment(schedule, duration, workingHours) {
             if (!this.exists()) {
                 return '';
             }
-            let time = new Date(go[index].from + minToMS(shift * 30));
-            let hours = (time.getUTCHours() + bankTimeWork.zone) % 24;
-            let shiftDay = (time.getUTCHours() + bankTimeWork.zone - hours) / 24;
+            let time = new Date(go[index].from + minToMS(shift * timeLater));
+            let hours = (time.getUTCHours() + bankTimeWork.zone) % hoursInDay;
+            let shiftDay = (time.getUTCHours() + bankTimeWork.zone - hours) / hoursInDay;
             let minutes = time.getUTCMinutes();
-            let result = template.replace('%DD', dayNumber[time.getUTCDay() + shiftDay]);
-            result = result.replace('%HH',
-                ((hours - hours % 10) / 10).toString() + (hours % 10).toString());
-            result = result.replace('%MM',
-                ((minutes - minutes % 10) / 10).toString() + (minutes % 10).toString());
 
-            return result;
+            return template
+                .replace('%DD', dayNumber[time.getUTCDay() + shiftDay])
+                .replace('%HH', formatTime(hours))
+                .replace('%MM', formatTime(minutes));
         },
 
         /**
@@ -245,7 +259,9 @@ function getAppropriateMoment(schedule, duration, workingHours) {
             if (go.length === 0) {
                 return false;
             }
-            if (go[index].to - go[index].from >= minToMS(duration) + minToMS((shift + 1) * 30)) {
+            let currentTime = go[index];
+            if (currentTime.to - currentTime.from >=
+                minToMS(duration) + minToMS((shift + 1) * timeLater)) {
                 shift += 1;
 
                 return true;
